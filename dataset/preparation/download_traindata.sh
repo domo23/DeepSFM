@@ -49,7 +49,8 @@ if [ "$answer" != "Y" -a "$answer" != "y" ]; then
 fi
 echo
 
-datasets=(sun3d rgbd mvs scenes11)
+#datasets=(sun3d rgbd mvs scenes11)
+datasets=(rgbd)
 
 OLD_PWD="$PWD"
 DESTINATION=traindata
