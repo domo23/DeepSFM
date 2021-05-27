@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 import torch
-from scipy.misc import imresize
+from cv2 import resize
 from scipy.ndimage.interpolation import zoom
 
 '''Set of tranform random routines that takes list of inputs as arguments,
@@ -60,7 +60,7 @@ class RandomScaleCrop(object):
 
         output_intrinsics[0] *= x_scaling
         output_intrinsics[1] *= y_scaling
-        scaled_images = [imresize(im, (scaled_h, scaled_w)) for im in images]
+        scaled_images = [resize(im, (scaled_w, scaled_h)) for im in images]
         scaled_depths = [zoom(depth, (y_scaling, x_scaling)) for depth in depths]
 
         offset_y = np.random.randint(scaled_h - out_h + 1)

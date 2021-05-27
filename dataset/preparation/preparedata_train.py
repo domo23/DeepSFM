@@ -10,7 +10,8 @@ from imageio.plugins import freeimage
 import h5py
 from lz4.block import decompress
 import scipy.misc
-import cv2
+#import cv2
+from PIL import Image
 
 from path import Path
 
@@ -41,6 +42,7 @@ def dump_example(dataset_name):
         for (f_idx, f_name) in enumerate(sequence):
             frame = sequence[f_name]
             for dt_type in frame:
+                
                 dataset = frame[dt_type]
                 img = dataset[...]
                 if dt_type == "camera":
@@ -57,8 +59,9 @@ def dump_example(dataset_name):
                     np.save(dump_depth_file, depth)
                 elif dt_type == "image":
                     img = imageio.imread(img.tobytes())
+                    
                     dump_img_file = dump_dir/'{:04d}.jpg'.format(f_idx)
-                    scipy.misc.imsave(dump_img_file, img)
+                    imageio.imwrite(dump_img_file, img)
 
         dump_cam_file = dump_dir/'cam.txt'
         np.savetxt(dump_cam_file, intrinsics)

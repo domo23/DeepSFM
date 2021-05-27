@@ -3,13 +3,13 @@ import os
 import torch.utils.data as data
 import numpy as np
 from transforms3d.euler import mat2euler
-from scipy.misc import imread
+from imageio import imread
 from path import Path
 import random
 
 
 def load_as_float(path):
-	return imread(path).astype(np.float32)
+	return np.array(imread(path)).astype(np.float32)
 
 
 class SequenceFolder(data.Dataset):
@@ -60,93 +60,96 @@ class SequenceFolder(data.Dataset):
 		scale_sum = 0
 		l1counter = 0
 		for scene in self.scenes:
-
-			intrinsics = np.genfromtxt(scene / 'cam.txt').astype(np.float32).reshape((3, 3))
-			source = False
-			if self.pose_source and os.path.exists(scene / self.pose_source):
-				poses = np.genfromtxt(scene / self.pose_source).astype(np.float32)
-				source = True
-				imgs = sorted(scene.files('*.jpg'))
-				if len(imgs) >= 20:
-					print(scene)
-			else:
-				poses = np.genfromtxt(scene / 'poses.txt').astype(np.float32)
-			if self.req_gt:
-				poses_gt = np.genfromtxt(scene / 'poses.txt').astype(np.float32)
-			imgs = sorted(scene.files('*.jpg'))
-			# print(len(imgs))
-
-			if len(imgs) < sequence_length:
-				continue
-			for i in range(len(imgs)):
-				if i < demi_length:
-					shifts = list(range(0, sequence_length))
-					shifts.pop(i)
-				elif i >= len(imgs) - demi_length:
-					shifts = list(range(len(imgs) - sequence_length, len(imgs)))
-					shifts.pop(i - len(imgs))
+			try:
+				intrinsics = np.genfromtxt(scene / 'cam.txt').astype(np.float32).reshape((3, 3))
+				source = False
+				if self.pose_source and os.path.exists(scene / self.pose_source):
+					poses = np.genfromtxt(scene / self.pose_source).astype(np.float32)
+					source = True
+					imgs = sorted(scene.files('*.jpg'))
+					if len(imgs) >= 20:
+						print(scene)
 				else:
-					shifts = list(range(i - demi_length, i + (sequence_length + 1) // 2))
-					shifts.pop(demi_length)
-
-				img = imgs[i]
-				depth = img.dirname() / img.name[:-4] + '.npy'
-				if self.gt_source == 'p':
-					depth = img.dirname() / img.name[:-4] + '_p.npy'
-				pose_tgt = np.concatenate((poses[i, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
+					poses = np.genfromtxt(scene / 'poses.txt').astype(np.float32)
 				if self.req_gt:
-					pose_tgt_gt = np.concatenate((poses_gt[i, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
-				sample = {'intrinsics': intrinsics, 'tgt': img, 'tgt_depth': depth, 'ref_imgs': [],
-				          'ref_poses': [], 'ref_poses_gt': [], 'ref_depths': [], 'scale': 1.0, 'gt_angle': [],
-				          'source': source}
-				for j in shifts:
-					sample['ref_imgs'].append(imgs[j])
-					if self.geo:
-						if self.depth_source == 'g':
-							sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
-						elif self.depth_source == 'p':
-							path = imgs[j].dirname() / imgs[j].name[:-4] + '_p.npy'
-							if (os.path.exists(path)):
-								sample['ref_depths'].append(path)
-								p_num += 1
-							else:
-								sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
-								g_num += 1
-						else:
-							path = imgs[j].dirname() / imgs[j].name[:-4] + '_' + self.depth_source + '.npy'
-							if (os.path.exists(path)):
-								sample['ref_depths'].append(path)
-								p_num += 1
-							else:
-								sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
-								g_num += 1
-					pose_src = np.concatenate((poses[j, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
-					pose_rel = pose_src @ np.linalg.inv(pose_tgt)
-					if self.req_gt:
-						pose_src_gt = np.concatenate((poses_gt[j, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
-						pose_rel_gt = pose_src_gt @ np.linalg.inv(pose_tgt_gt)
-					if self.req_angle:
-						angle = mat2euler(pose_rel[:3, :3])
-						sample['gt_angle'] = angle
-					pose = pose_rel[:3, :].reshape((1, 3, 4)).astype(np.float32)
-					if self.req_gt:
-						pose_gt = pose_rel_gt[:3, :].reshape((1, 3, 4)).astype(np.float32)
-						sample['ref_poses_gt'].append(pose_gt)
-					if self.scale:
-						self.counter = self.counter + 1
-						scale = (pose[0, 0, 3] ** 2 + pose[0, 1, 3] ** 2 + pose[0, 2, 3] ** 2) ** 0.5
-						scale_sum += scale
-						self.avg_scale = scale_sum / self.counter
-						self.max_scale = max(self.max_scale, scale)
-						sample['scale'] = scale
-						pose[0, 0, 3] /= scale
-						pose[0, 1, 3] /= scale
-						pose[0, 2, 3] /= scale
-						if scale < 0.5:
-							l1counter += 1
+					poses_gt = np.genfromtxt(scene / 'poses.txt').astype(np.float32)
+				imgs = sorted(scene.files('*.jpg'))
+				# print(len(imgs))
 
-					sample['ref_poses'].append(pose)
-				sequence_set.append(sample)
+				if len(imgs) < sequence_length:
+					continue
+				for i in range(len(imgs)):
+					if i < demi_length:
+						shifts = list(range(0, sequence_length))
+						shifts.pop(i)
+					elif i >= len(imgs) - demi_length:
+						shifts = list(range(len(imgs) - sequence_length, len(imgs)))
+						shifts.pop(i - len(imgs))
+					else:
+						shifts = list(range(i - demi_length, i + (sequence_length + 1) // 2))
+						shifts.pop(demi_length)
+
+					img = imgs[i]
+					depth = img.dirname() / img.name[:-4] + '.npy'
+					if self.gt_source == 'p':
+						depth = img.dirname() / img.name[:-4] + '_p.npy'
+					pose_tgt = np.concatenate((poses[i, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
+					if self.req_gt:
+						pose_tgt_gt = np.concatenate((poses_gt[i, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
+					sample = {'intrinsics': intrinsics, 'tgt': img, 'tgt_depth': depth, 'ref_imgs': [],
+							'ref_poses': [], 'ref_poses_gt': [], 'ref_depths': [], 'scale': 1.0, 'gt_angle': [],
+							'source': source}
+					for j in shifts:
+						sample['ref_imgs'].append(imgs[j])
+						if self.geo:
+							if self.depth_source == 'g':
+								sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
+							elif self.depth_source == 'p':
+								path = imgs[j].dirname() / imgs[j].name[:-4] + '_p.npy'
+								if (os.path.exists(path)):
+									sample['ref_depths'].append(path)
+									p_num += 1
+								else:
+									sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
+									g_num += 1
+							else:
+								path = imgs[j].dirname() / imgs[j].name[:-4] + '_' + self.depth_source + '.npy'
+								if (os.path.exists(path)):
+									sample['ref_depths'].append(path)
+									p_num += 1
+								else:
+									sample['ref_depths'].append(imgs[j].dirname() / imgs[j].name[:-4] + '.npy')
+									g_num += 1
+						pose_src = np.concatenate((poses[j, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
+						pose_rel = pose_src @ np.linalg.inv(pose_tgt)
+						if self.req_gt:
+							pose_src_gt = np.concatenate((poses_gt[j, :].reshape((3, 4)), np.array([[0, 0, 0, 1]])), axis=0)
+							pose_rel_gt = pose_src_gt @ np.linalg.inv(pose_tgt_gt)
+						if self.req_angle:
+							angle = mat2euler(pose_rel[:3, :3])
+							sample['gt_angle'] = angle
+						pose = pose_rel[:3, :].reshape((1, 3, 4)).astype(np.float32)
+						if self.req_gt:
+							pose_gt = pose_rel_gt[:3, :].reshape((1, 3, 4)).astype(np.float32)
+							sample['ref_poses_gt'].append(pose_gt)
+						if self.scale:
+							self.counter = self.counter + 1
+							scale = (pose[0, 0, 3] ** 2 + pose[0, 1, 3] ** 2 + pose[0, 2, 3] ** 2) ** 0.5
+							scale_sum += scale
+							self.avg_scale = scale_sum / self.counter
+							self.max_scale = max(self.max_scale, scale)
+							sample['scale'] = scale
+							pose[0, 0, 3] /= scale
+							pose[0, 1, 3] /= scale
+							pose[0, 2, 3] /= scale
+							if scale < 0.5:
+								l1counter += 1
+
+						sample['ref_poses'].append(pose)
+					sequence_set.append(sample)
+			except Exception as e:
+				print(e)
+				
 		if self.size > 0:
 			sequence_set = random.sample(sequence_set, self.size)
 		if self.ttype == 'train.txt':

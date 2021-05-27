@@ -1,0 +1,8 @@
+dataset/preparation/traindata/
+dataset/preparation/testdata/
+dataset/train/
+dataset/test/
+checkpoints/
+
+*.pyc
+.vscode/
