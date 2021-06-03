@@ -58,7 +58,7 @@ def dump_example(dataset_name):
                 elif dt_type == "image":
                     img = imageio.imread(img.tobytes())
                     dump_img_file = dump_dir/'{:04d}.jpg'.format(f_idx)
-                    scipy.misc.imsave(dump_img_file, img)
+                    imageio.imwrite(dump_img_file, img)
 
         dump_cam_file = dump_dir/'cam.txt'
         np.savetxt(dump_cam_file, intrinsics)

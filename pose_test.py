@@ -156,31 +156,36 @@ def main():
 				path = tgt_path[bat]
 				dirname = Path.dirname(path)
 
-				orig_poses = np.genfromtxt(Path.join(dirname, args.pose_init + "_poses.txt"))
+				orig_poses = np.genfromtxt(Path.join(dirname, "poses.txt"))
 				for j in range(len(ref_imgs)):
-					p_rel_pose[:, j] = torch.matmul(noise_pose[:, j], inv(p_matrix))
+					try:
+						p_rel_pose[:, j] = torch.matmul(noise_pose[:, j], inv(p_matrix))
 
-					seq_num = int(Path.basename(ref_paths[bat][j])[:-4])
-					orig_poses[seq_num] = p_rel_pose[bat, j, :3, :].data.cpu().numpy().reshape(12, )
+						seq_num = int(Path.basename(ref_paths[bat][j])[:-4])
+						orig_poses[seq_num] = p_rel_pose[bat, j, :3, :].data.cpu().numpy().reshape(12, )
 
-					p_aa = mat2axangle(p_rel_pose[bat, j, :3, :3].data.cpu().numpy())
-					gt_aa = mat2axangle(pose[bat, j, :3, :3].data.cpu().numpy(), unit_thresh=1e-2)
+						print(p_rel_pose[bat, j, :3, :3].data.cpu().numpy())
+						p_aa = mat2axangle(p_rel_pose[bat, j, :3, :3].data.cpu().numpy())
+						gt_aa = mat2axangle(pose[bat, j, :3, :3].data.cpu().numpy(), unit_thresh=1e-2)
 
-					n_aa = mat2axangle(noise_pose[bat, j, :3, :3].data.cpu().numpy(), unit_thresh=1e-2)
-					p_t = p_rel_pose[bat, j, :3, 3].data.cpu().numpy()
-					gt_t = pose[bat, j, :3, 3].data.cpu().numpy()
-					n_t = noise_pose[bat, j, :3, 3].data.cpu().numpy()
-					p_aa = p_aa[0] * p_aa[1]
-					n_aa = n_aa[0] * n_aa[1]
-					gt_aa = gt_aa[0] * gt_aa[1]
-					error = compute_motion_errors(np.concatenate([n_aa, n_t]), np.concatenate([gt_aa, gt_t]), True)
-					error_p = compute_motion_errors(np.concatenate([p_aa, p_t]), np.concatenate([gt_aa, gt_t]), True)
-					print("%d n r%.6f, t%.6f" % (i, error[0], error[2]))
-					print("%d p r%.6f, t%.6f" % (i, error_p[0], error_p[2]))
-					errors[0, 0, i] += error[0]
-					errors[0, 1, i] += error[2]
-					errors[1, 0, i] += error_p[0]
-					errors[1, 1, i] += error_p[2]
+						n_aa = mat2axangle(noise_pose[bat, j, :3, :3].data.cpu().numpy(), unit_thresh=1e-2)
+						p_t = p_rel_pose[bat, j, :3, 3].data.cpu().numpy()
+						gt_t = pose[bat, j, :3, 3].data.cpu().numpy()
+						n_t = noise_pose[bat, j, :3, 3].data.cpu().numpy()
+						p_aa = p_aa[0] * p_aa[1]
+						n_aa = n_aa[0] * n_aa[1]
+						gt_aa = gt_aa[0] * gt_aa[1]
+						error = compute_motion_errors(np.concatenate([n_aa, n_t]), np.concatenate([gt_aa, gt_t]), True)
+						error_p = compute_motion_errors(np.concatenate([p_aa, p_t]), np.concatenate([gt_aa, gt_t]), True)
+						print("%d n r%.6f, t%.6f" % (i, error[0], error[2]))
+						print("%d p r%.6f, t%.6f" % (i, error_p[0], error_p[2]))
+						errors[0, 0, i] += error[0]
+						errors[0, 1, i] += error[2]
+						errors[1, 0, i] += error_p[0]
+						errors[1, 1, i] += error_p[2]
+					except Exception as e:
+						print(e)
+
 				errors[:, :, i] /= len(ref_imgs)
 				if args.save and not Path.exists(Path.join(dirname, args.save + "_poses.txt")):
 					np.savetxt(Path.join(dirname, args.save + "_poses.txt"), orig_poses)

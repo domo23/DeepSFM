@@ -2,16 +2,15 @@ import numpy
 import os
 import torch.utils.data as data
 import numpy as np
-from scipy.misc import imread
+#from csv import imread
 from path import Path
 import random
 from transforms3d.euler import *
 import skimage.io as io
 from tqdm import tqdm
 
-
 def load_as_float(path):
-    return imread(path).astype(np.float32)
+    return io.imread(path).astype(np.float32)
 
 
 def read_png_depth(path):
@@ -63,7 +62,7 @@ class SequenceFolder(data.Dataset):
         for scene in tqdm(self.scenes):
             intrinsics = np.genfromtxt(scene / 'cam.txt').astype(np.float32).reshape((3, 3))
             poses = np.genfromtxt(scene / 'poses.txt').astype(np.float32)
-            poses_pd = np.genfromtxt(scene + '/%s_poses.txt' % self.pose_init).astype(np.float32)
+            poses_pd = poses
             imgs = sorted(scene.files('*.jpg'))
 
             if len(imgs) < sequence_length:
@@ -132,7 +131,7 @@ class SequenceFolder(data.Dataset):
                     pose_pd = pose_rel_pd.reshape((1, 4, 4)).astype(np.float32)
                     sample['ref_poses'].append(pose)
 
-                    sample['ref_noise_poses'].append(pose_pd)
+                    sample['ref_noise_poses'].append(pose)
 
                 sequence_set.append(sample)
         # if self.ttype == 'train.txt':
