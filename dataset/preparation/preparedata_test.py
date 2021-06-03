@@ -17,8 +17,13 @@ from path import Path
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
 def dump_example(dataset_name):
+    fileName = os.path.join(path, "testdata", "{:}.h5".format(dataset_name))
+    if not os.path.exists(fileName):
+        return
+
     print("Converting {:}.h5 ...".format(dataset_name))
-    file = h5py.File(os.path.join(path, "testdata", "{:}.h5".format(dataset_name)), "r")
+
+    file = h5py.File(fileName, "r")
     
     for (seq_idx, seq_name) in enumerate(file):
         if dataset_name == 'scenes11_test':
